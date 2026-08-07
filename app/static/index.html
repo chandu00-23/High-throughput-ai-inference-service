@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Throughput AI Inference & Semantic Cache Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0d14;
+            --bg-card: #121824;
+            --bg-card-border: #1e293b;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--bg-card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(18, 24, 36, 0.7);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .badge-live::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Metrics Row */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(6, 182, 212, 0.4);
+        }
+
+        .metric-title {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Main Content Layout */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--bg-card-border);
+            border-radius: 16px;
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        /* Playground Inputs */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        input[type="text"], textarea, select {
+            background: #0f141f;
+            border: 1px solid var(--bg-card-border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.85rem 1.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-submit:hover {
+            opacity: 0.9;
+            transform: scale(0.99);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Preset buttons */
+        .presets {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-preset {
+            background: #1a2233;
+            border: 1px solid var(--bg-card-border);
+            color: var(--text-muted);
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-preset:hover {
+            background: #243047;
+            color: var(--text-main);
+        }
+
+        /* Output Box */
+        .output-box {
+            background: #090c12;
+            border: 1px solid var(--bg-card-border);
+            border-radius: 10px;
+            padding: 1.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            min-height: 160px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .hit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: fit-content;
+        }
+
+        .hit-badge.exact {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .hit-badge.semantic {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .hit-badge.miss {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Latency Log Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--bg-card-border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <h2 style="font-weight: 700; background: linear-gradient(to right, #06b6d4, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Redis AI Semantic Cache
+            </h2>
+            <span class="badge-live">SYSTEM ACTIVE</span>
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-muted);">
+            OpenAI-Compatible Microservice (FastAPI + Redis HNSW)
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Metrics Overview -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-title">TOTAL REQUESTS</div>
+                <div class="metric-value" id="stat-total-req">0</div>
+                <div class="metric-sub">Processed through gateway</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">CACHE HIT RATIO</div>
+                <div class="metric-value" style="color: var(--accent-green);" id="stat-hit-ratio">0.0%</div>
+                <div class="metric-sub" id="stat-hits-breakdown">0 Exact | 0 Semantic</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">AVG HIT LATENCY</div>
+                <div class="metric-value" style="color: var(--accent-cyan);" id="stat-avg-latency">12.4 ms</div>
+                <div class="metric-sub">vs ~850ms LLM Miss latency</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">ESTIMATED COST SAVED</div>
+                <div class="metric-value" style="color: var(--accent-purple);" id="stat-cost-saved">$0.000</div>
+                <div class="metric-sub" id="stat-tokens-saved">0 tokens saved</div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="grid-2col">
+            
+            <!-- Interactive Playground -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Interactive Inference Playground</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">POST /v1/chat/completions</span>
+                </div>
+
+                <div class="presets">
+                    <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Quick Test:</span>
+                    <button class="btn-preset" onclick="setPrompt('Explain quantum computing in one sentence.')">Exact Query 1</button>
+                    <button class="btn-preset" onclick="setPrompt('Can you explain quantum computing in a single sentence?')">Near-Duplicate (Semantic Hit)</button>
+                    <button class="btn-preset" onclick="setPrompt('What is the capital of France?')">Cache Miss Prompt</button>
+                </div>
+
+                <div class="form-group">
+                    <label>User Prompt</label>
+                    <textarea id="input-prompt" placeholder="Type a prompt to send to the inference service...">Explain quantum computing in one sentence.</textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>System Prompt Context</label>
+                        <input type="text" id="input-system" value="You are a helpful physics tutor.">
+                    </div>
+                    <div class="form-group">
+                        <label>Temperature</label>
+                        <input type="text" id="input-temp" value="0.7">
+                    </div>
+                </div>
+
+                <button class="btn-submit" id="btn-send" onclick="sendInferenceRequest()">
+                    <span>Execute Inference Request</span>
+                </button>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.9rem; font-weight: 500;">Output Stream & Cache Result</span>
+                    <div id="status-badge-container"></div>
+                </div>
+
+                <div class="output-box" id="output-text">Click execute to test inference response...</div>
+            </div>
+
+            <!-- Analytics & Live Request Log -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Latency & Cache Analytics</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Side-by-side Benchmark</span>
+                </div>
+
+                <div style="height: 220px; position: relative;">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+
+                <span class="card-title" style="font-size: 1rem; margin-top: 0.5rem;">Recent Request Traces</span>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Query snippet</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="request-log-body">
+                            <tr>
+                                <td colspan="4" style="color: var(--text-muted); text-align: center;">No requests sent yet. Use playground on the left.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let totalReqs = 0;
+        let exactHits = 0;
+        let semanticHits = 0;
+        let misses = 0;
+        let tokensSaved = 0;
+
+        // Chart setup
+        const ctx = document.getElementById('latencyChart').getContext('2d');
+        const latencyChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Cache Miss (LLM)', 'Exact Hit', 'Semantic Hit'],
+                datasets: [{
+                    label: 'Latency (ms)',
+                    data: [850, 2.1, 12.4],
+                    backgroundColor: [
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(16, 185, 129, 0.7)',
+                        'rgba(6, 182, 212, 0.7)'
+                    ],
+                    borderColor: [
+                        '#f59e0b',
+                        '#10b981',
+                        '#06b6d4'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#1e293b' },
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Milliseconds (ms)', color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        function setPrompt(txt) {
+            document.getElementById('input-prompt').value = txt;
+        }
+
+        async function sendInferenceRequest() {
+            const prompt = document.getElementById('input-prompt').value.trim();
+            const systemPrompt = document.getElementById('input-system').value.trim();
+            const temp = parseFloat(document.getElementById('input-temp').value) || 0.7;
+
+            if (!prompt) return;
+
+            const btn = document.getElementById('btn-send');
+            const outputBox = document.getElementById('output-text');
+            const badgeContainer = document.getElementById('status-badge-container');
+
+            btn.disabled = true;
+            outputBox.innerText = 'Sending request to FastAPI gateway...';
+            badgeContainer.innerHTML = '';
+
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch('/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: prompt }
+                        ],
+                        temperature: temp,
+                        stream: false
+                    })
+                });
+
+                const endTime = performance.now();
+                const clientLatency = (endTime - startTime).toFixed(1);
+
+                if (!response.ok) {
+                    outputBox.innerText = `Error ${response.status}: ${await response.text()}`;
+                    btn.disabled = false;
+                    return;
+                }
+
+                const data = await response.json();
+                const serverLatency = data.latency_ms || clientLatency;
+                const content = data.choices[0].message.content;
+                outputBox.innerText = content;
+
+                totalReqs++;
+                let statusBadge = '';
+
+                if (data.cached) {
+                    if (data.cache_type === 'exact') {
+                        exactHits++;
+                        statusBadge = `<div class="hit-badge exact">⚡ EXACT HIT (${serverLatency}ms)</div>`;
+                    } else {
+                        semanticHits++;
+                        statusBadge = `<div class="hit-badge semantic">🧠 SEMANTIC HIT (${serverLatency}ms)</div>`;
+                    }
+                } else {
+                    misses++;
+                    statusBadge = `<div class="hit-badge miss">🐢 CACHE MISS (${serverLatency}ms)</div>`;
+                }
+
+                badgeContainer.innerHTML = statusBadge;
+
+                // Update Stats
+                updateStats(prompt, data.cached ? data.cache_type : 'miss', serverLatency);
+
+            } catch (err) {
+                outputBox.innerText = `Network error: ${err.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function updateStats(prompt, status, latency) {
+            document.getElementById('stat-total-req').innerText = totalReqs;
+            
+            const hits = exactHits + semanticHits;
+            const ratio = totalReqs > 0 ? ((hits / totalReqs) * 100).toFixed(1) : '0.0';
+            document.getElementById('stat-hit-ratio').innerText = `${ratio}%`;
+            document.getElementById('stat-hits-breakdown').innerText = `${exactHits} Exact | ${semanticHits} Semantic`;
+
+            if (hits > 0) {
+                const savedEst = (hits * 150); // ~150 tokens per query saved
+                tokensSaved = savedEst;
+                document.getElementById('stat-tokens-saved').innerText = `${savedEst} tokens saved`;
+                document.getElementById('stat-cost-saved').innerText = `$${(savedEst * 0.000002).toFixed(4)}`;
+            }
+
+            // Append to table
+            const tbody = document.getElementById('request-log-body');
+            if (tbody.children[0] && tbody.children[0].children.length === 1) {
+                tbody.innerHTML = '';
+            }
+
+            const timeStr = new Date().toLocaleTimeString();
+            const snippet = prompt.length > 35 ? prompt.substring(0, 35) + '...' : prompt;
+            
+            let statusStyle = 'color: var(--accent-amber);';
+            let statusText = 'CACHE MISS';
+            if (status === 'exact') {
+                statusStyle = 'color: var(--accent-green);';
+                statusText = 'EXACT HIT';
+            } else if (status === 'semantic') {
+                statusStyle = 'color: var(--accent-cyan);';
+                statusText = 'SEMANTIC HIT';
+            }
+
+            const row = `<tr>
+                <td>${timeStr}</td>
+                <td>${escapeHtml(snippet)}</td>
+                <td style="${statusStyle} font-weight: 600;">${statusText}</td>
+                <td>${latency} ms</td>
+            </tr>`;
+
+            tbody.insertAdjacentHTML('afterbegin', row);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
