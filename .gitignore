@@ -1,27 +1,54 @@
-# Python virtual environment
+# ==========================================
+# SECURITY & SECRETS (Do NOT commit to GitHub)
+# ==========================================
+.env
+.env.*
+*.env
+*.env.local
+*.env.development
+*.env.production
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# ==========================================
+# Python Virtual Environments
+# ==========================================
 .venv/
 venv/
 ENV/
 env/
 
-# Byte-compiled / optimized files
+# ==========================================
+# Byte-compiled & Cache files
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Pytest / Coverage
+# ==========================================
+# Testing & Coverage Outputs
+# ==========================================
 .pytest_cache/
 .coverage
 htmlcov/
+.locust/
+*.log
 
-# Environment variables & secrets
-.env
-*.env.local
+# ==========================================
+# Databases & Temp Storage
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
 
-# IDE & OS files
+# ==========================================
+# OS & IDE Files
+# ==========================================
 .DS_Store
 .vscode/
 .idea/
-
-# Locust / Test outputs
-.locust/
+*.swp
+*.swo
